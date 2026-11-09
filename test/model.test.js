@@ -100,3 +100,31 @@ test("waveTop keeps columns on the grid, around the middle", () => {
   assert.equal(Model.waveTop(3), 2)
   assert.equal(Model.waveTop(1), 3)
 })
+
+const note = (id, urgent, timestamp) => ({ id, urgent, timestamp })
+
+test("the ticker runs the others once, oldest first", () => {
+  const plan = Model.tickerPlan([note("b", false, 2), note("a", false, 1)])
+  assert.equal(plan.looping, false)
+  assert.deepEqual(plan.items.map(i => i.id), ["a", "b"])
+})
+
+test("persistent ones hold the others back until acknowledged", () => {
+  const rows = [note("n", false, 1), note("r2", true, 3), note("r1", true, 2)]
+  const plan = Model.tickerPlan(rows)
+  assert.equal(plan.looping, true)
+  assert.deepEqual(plan.items.map(i => i.id), ["r1", "r2"])
+  const after = Model.tickerPlan(rows, { r1: true, r2: true })
+  assert.equal(after.looping, false)
+  assert.deepEqual(after.items.map(i => i.id), ["n"])
+})
+
+test("the ticker is empty without rows", () => {
+  assert.deepEqual(Model.tickerPlan(null), { looping: false, items: [] })
+})
+
+test("newsText strips markup and joins summary and body", () => {
+  assert.equal(Model.newsText({ summary: "Mail", body: "<b>Hello</b>\n  &amp; bye" }), "Mail — Hello & bye")
+  assert.equal(Model.newsText({ summary: "Only" }), "Only")
+  assert.equal(Model.newsText({ body: "Body" }), "Body")
+})

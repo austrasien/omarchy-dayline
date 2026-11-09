@@ -169,6 +169,102 @@ Item {
     onTriggered: root.peak = Math.random() * Math.random()
   }
 
+  // ---------------------------------------------------------- the news
+
+  // The notifications, from austraz.notifications, running along the band.
+  property var newsRows: []
+  FileView {
+    id: newsFile
+    path: root.runtimeDir + "/austraz-notifications-ticker.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      var rows
+      try { rows = JSON.parse(text() || "[]") } catch (e) { return }
+      root.newsRows = rows
+    }
+  }
+  Timer { interval: 2000; running: true; repeat: true; onTriggered: newsFile.reload() }
+
+  // Tells the notification service to leave the display to this plugin. It
+  // may not be listening yet at shell start.
+  property bool newsClaimed: false
+  Process {
+    id: newsClaim
+    command: ["omarchy-shell", "notifications", "ticker"]
+    stdout: StdioCollector { onStreamFinished: if (text.indexOf("ok") !== -1) root.newsClaimed = true }
+  }
+  Timer {
+    interval: 1000
+    running: !root.newsClaimed
+    repeat: true
+    onTriggered: if (!newsClaim.running) newsClaim.running = true
+  }
+
+  // Waits for the band if it is taken; once up, the band's other uses open
+  // over it and it waits, stopped, below them.
+  property bool newsShown: false
+  property real newsOpened: 0
+  readonly property bool bandBusy: osdUp || dictUp
+  readonly property bool newsWanted: news.hasItems
+  function refreshNews() {
+    if (newsWanted && !newsShown && !bandBusy) {
+      newsShown = true
+      newsClosing.stop()
+      newsOpening.restart()
+    } else if (newsWanted && newsShown && newsClosing.running) {
+      newsClosing.stop()
+      newsOpening.restart()
+    } else if (!newsWanted && newsShown && !newsClosing.running) {
+      newsOpening.stop()
+      newsClosing.restart()
+    }
+  }
+  onNewsWantedChanged: refreshNews()
+  onBandBusyChanged: refreshNews()
+  NumberAnimation { id: newsOpening; target: root; property: "newsOpened"; to: 1; duration: root.dur(240); easing.type: Easing.OutCubic }
+  NumberAnimation {
+    id: newsClosing
+    target: root
+    property: "newsOpened"
+    to: 0
+    duration: root.dur(220)
+    easing.type: Easing.OutCubic
+    onFinished: root.newsShown = false
+  }
+  function notificationsCall(method, id) {
+    Quickshell.execDetached(["omarchy-shell", "notifications", method, id])
+  }
+
+  PanelWindow {
+    id: newsWin
+    screen: root.targetScreen
+    visible: root.newsShown
+    color: "transparent"
+    implicitHeight: root.bandHeight
+    anchors { bottom: true; left: true; right: true }
+    margins { left: root.edgeInset; right: root.edgeInset }
+    WlrLayershell.namespace: "austraz-dayline-news"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    exclusionMode: ExclusionMode.Ignore
+    exclusiveZone: 0
+
+    NewsTicker {
+      id: news
+      bar: root
+      width: (root.targetScreen ? root.targetScreen.width : 0) - 2 * root.edgeInset
+      height: root.bandHeight
+      band: root.bandAt(root.newsOpened)
+      rows: root.newsRows
+      running: root.newsShown && !root.bandBusy
+      onPassed: function(id) { root.notificationsCall("dismissId", id) }
+      onAcknowledged: function(id) { root.notificationsCall("dismissId", id) }
+      onInvoked: function(id) { root.notificationsCall("invoke", id) }
+    }
+  }
+
   // ------------------------------------------------------------- the window
 
   PanelWindow {
@@ -364,6 +460,8 @@ Item {
     function dictation(): string { return "ok" }
     function demo(mode: string): void { root.demoState = mode === "off" ? "" : mode }
     function demoSay(text: string): void { root.demoText = text }
+    function ackNews(): void { news.ackFirst() }
+    function newsState(): string { return JSON.stringify({ shown: root.newsShown, looping: news.looping, queue: news.queue }) }
     function snapshot(path: string): void { stage.grabToImage(function(r) { r.saveToFile(path) }) }
   }
 }

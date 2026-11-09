@@ -74,6 +74,28 @@ function surgeDirection(previous, percent, scale) {
   return 0
 }
 
+// What the ticker runs: the persistent ones, red, going round until they are
+// acknowledged; only without any, the others, each going by once. Oldest first.
+function tickerPlan(rows, gone) {
+  var left = (Array.isArray(rows) ? rows : []).filter(function(r) { return !(gone && gone[r.id]) })
+  left.sort(function(a, b) { return a.timestamp - b.timestamp })
+  var urgent = (Array.isArray(rows) ? rows : []).some(function(r) { return r.urgent && !(gone && gone[r.id]) })
+  return { looping: urgent, items: left.filter(function(r) { return !!r.urgent === urgent }) }
+}
+
+// A notification's line: no markup, no line breaks.
+function newsText(item) {
+  function plain(s) {
+    return String(s || "").replace(/<[^>]*>/g, " ")
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+      .replace(/\s+/g, " ").trim()
+  }
+  var summary = plain(item && item.summary)
+  var body = plain(item && item.body)
+  return summary && body ? summary + " — " + body : summary || body
+}
+
 // One step of the pixel meter's height, from a 0..1 peak. Hard steps on a
 // square-root scale, from Omakoe; silence is one step, never none.
 function waveStep(peak) {
@@ -103,6 +125,8 @@ if (typeof module !== "undefined") {
     readOsd: readOsd,
     ticks: ticks,
     cardX: cardX,
+    tickerPlan: tickerPlan,
+    newsText: newsText,
     surgeDirection: surgeDirection,
     waveStep: waveStep,
     pushWave: pushWave,

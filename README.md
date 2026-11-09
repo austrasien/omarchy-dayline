@@ -18,6 +18,11 @@ Nothing shows at rest. It replaces the on-screen display:
   swung along it while transcribing. What has been said grows from the opposite
   edge, over the meter; once it fills the band, it scrolls to the left.
 
+- **Notifications**, from austraz.notifications, run along it like a news ticker,
+  each behind its own icon, and go by once. Critical ones are red, go round until
+  acknowledged, and hold the others back until then. A right click on one
+  acknowledges it; a left click runs its action.
+
 It shows over everything, a fullscreen video included. In use, the band rises
 from the gap below the windows over their bottom edge, as the side rails do; the
 windows themselves never move. Its surface takes no pointer and only exists while
