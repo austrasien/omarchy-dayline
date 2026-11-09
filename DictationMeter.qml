@@ -20,6 +20,9 @@ Item {
 
   readonly property int pitch: 4
   readonly property int columns: Math.ceil(stageWidth / pitch)
+  // A level is three columns wide: each is drawn, and updated, as one.
+  readonly property int groupColumns: 3
+  readonly property int groups: Math.ceil(columns / groupColumns)
   readonly property bool recording: mode === "recording"
   readonly property int meterHeight: Model.WAVE_STEPS * pitch
   readonly property real band: bar.bandAt(opened)
@@ -36,7 +39,7 @@ Item {
     interval: 50
     running: meter.recording
     repeat: true
-    onTriggered: meter.wave = Model.pushWave(meter.wave, meter.peak, meter.columns, 3)
+    onTriggered: meter.wave = Model.pushWave(meter.wave, meter.peak, meter.groups)
   }
 
   // One cell, tiled: columns of cells are one image each, not eight items.
@@ -72,14 +75,14 @@ Item {
         anchors.fill: parent
         visible: meter.recording
         Repeater {
-          model: meter.columns
+          model: meter.groups
           delegate: Image {
             required property int index
-            readonly property int steps: meter.wave[meter.fromLeft ? index : meter.columns - 1 - index] || 0
+            readonly property int steps: meter.wave[meter.fromLeft ? index : meter.groups - 1 - index] || 0
             visible: steps > 0
-            x: index * meter.pitch
+            x: index * meter.groupColumns * meter.pitch
             y: Model.waveTop(steps) * meter.pitch
-            width: meter.pitch
+            width: meter.groupColumns * meter.pitch
             height: steps * meter.pitch
             fillMode: Image.Tile
             horizontalAlignment: Image.AlignLeft

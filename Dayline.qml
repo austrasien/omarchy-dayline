@@ -173,6 +173,7 @@ Item {
 
   // The notifications, from austraz.notifications, running along the band.
   property var newsRows: []
+  property string newsRaw: ""
   FileView {
     id: newsFile
     path: root.runtimeDir + "/austraz-notifications-ticker.json"
@@ -180,8 +181,12 @@ Item {
     printErrors: false
     onFileChanged: reload()
     onLoaded: {
+      // Re-read regularly: only a real change may rebuild the ticker.
+      var raw = text()
+      if (raw === root.newsRaw) return
       var rows
-      try { rows = JSON.parse(text() || "[]") } catch (e) { return }
+      try { rows = JSON.parse(raw || "[]") } catch (e) { return }
+      root.newsRaw = raw
       root.newsRows = rows
     }
   }
@@ -267,10 +272,44 @@ Item {
 
   // ------------------------------------------------------------- the window
 
+  // The dictation has a surface of its own, no taller than the band: it stays
+  // up for a long time and animates all along.
+  PanelWindow {
+    screen: root.targetScreen
+    visible: root.targetScreen !== null && root.dictUp
+    color: "transparent"
+    implicitHeight: root.bandHeight
+    anchors { bottom: true; left: true; right: true }
+    margins { left: root.edgeInset; right: root.edgeInset }
+    WlrLayershell.namespace: "austraz-dayline-dictation"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    exclusionMode: ExclusionMode.Ignore
+    exclusiveZone: 0
+    mask: Region {}
+
+    // The pixel meter, or the bar it turns into while transcribing.
+    Loader {
+      active: root.dictUp
+      visible: !root.osdUp
+      anchors.fill: parent
+      sourceComponent: DictationMeter {
+        bar: root
+        stageWidth: root.bandWidth
+        text: root.demoState !== "" ? root.demoText : root.dictText
+        stageHeight: root.bandHeight
+        mode: root.dictMode
+        peak: root.peak
+        opened: root.dictOpened
+        fromLeft: root.dictFromLeft
+      }
+    }
+  }
+
   PanelWindow {
     id: win
     screen: root.targetScreen
-    visible: root.targetScreen !== null && (root.osdUp || root.dictUp)
+    visible: root.targetScreen !== null && root.osdUp
     color: "transparent"
     implicitHeight: root.surfaceHeight
     anchors { bottom: true; left: true; right: true }
@@ -286,25 +325,6 @@ Item {
     Item {
       id: stage
       anchors.fill: parent
-
-      // The pixel meter, or the bar it turns into while transcribing.
-      Loader {
-        active: root.dictUp
-        visible: !root.osdUp
-        x: root.edgeInset
-        width: root.bandWidth
-        height: parent.height
-        sourceComponent: DictationMeter {
-          bar: root
-          stageWidth: root.bandWidth
-          text: root.demoState !== "" ? root.demoText : root.dictText
-          stageHeight: stage.height
-          mode: root.dictMode
-          peak: root.peak
-          opened: root.dictOpened
-          fromLeft: root.dictFromLeft
-        }
-      }
 
       // The rule, opening from the middle as the band rises.
       Item {
@@ -441,7 +461,7 @@ Item {
     }
   }
 
-  readonly property real bandWidth: stage.width - 2 * edgeInset
+  readonly property real bandWidth: (targetScreen ? targetScreen.width : 0) - 2 * edgeInset
 
   // The level and the fill move smoothly between two presses of a key, but
   // start in place.
