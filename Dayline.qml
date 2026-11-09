@@ -237,6 +237,18 @@ Item {
             height: parent.height
             color: root.bright
           }
+          // Worn tape: dark lines across the whole rule, as over the cards' text.
+          Image {
+            y: 2
+            width: parent.width
+            height: parent.height - 2
+            fillMode: Image.Tile
+            verticalAlignment: Image.AlignTop
+            horizontalAlignment: Image.AlignLeft
+            source: "data:image/svg+xml," + encodeURIComponent(
+              "<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'><rect width='3' height='1' fill='"
+              + root.hudBlack + "' fill-opacity='0.6'/></svg>")
+          }
         }
       }
 
