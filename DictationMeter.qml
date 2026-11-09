@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Commons
 import "Model.js" as Model
 
 // Omakoe's 8-bit meter, as wide as the screen: hard-stepped mirrored columns
@@ -18,7 +19,7 @@ Item {
   readonly property int columns: Math.ceil(stageWidth / pitch)
   readonly property bool recording: mode === "recording"
   readonly property int meterHeight: Model.WAVE_STEPS * pitch
-  readonly property int meterY: stageHeight - meterHeight - 2
+  readonly property real band: bar.bandAt(opened)
 
   property var wave: []
   Timer {
@@ -41,9 +42,19 @@ Item {
     height: meter.stageHeight
     clip: true
 
-    Item {
+    // The band, rising over the bottom of the windows; the meter rides in it.
+    Rectangle {
       x: -clipper.x
-      y: meter.meterY
+      y: meter.stageHeight - meter.band
+      width: meter.stageWidth
+      height: meter.band
+      color: Color.background
+      clip: true
+
+      Rectangle { width: parent.width; height: 2; color: meter.bar.hud }
+
+      Item {
+      y: parent.height - meter.meterHeight - 1
       width: meter.stageWidth
       height: meter.meterHeight
 
@@ -112,6 +123,7 @@ Item {
             source: meter.tile(meter.bar.hud)
           }
         }
+      }
       }
     }
   }

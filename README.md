@@ -15,9 +15,10 @@ Nothing shows at rest. It replaces the on-screen display:
   other while recording, in the theme's accent, then turns into a bar with a light
   swung along it while transcribing.
 
-It shows over everything, a fullscreen video included. Its surface takes no
-pointer and only exists while something shows. The windows are kept 18 pixels
-higher, for the meter's zone: Day bar and Day tape follow them.
+It shows over everything, a fullscreen video included. In use, the band rises
+from the gap below the windows over their bottom edge, as the side rails do; the
+windows themselves never move. Its surface takes no pointer and only exists while
+something shows.
 
 ## Wiring
 

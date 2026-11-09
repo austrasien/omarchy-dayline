@@ -33,10 +33,13 @@ Item {
   }
 
   // Fixed: Hyprland animates a layer's resize. The surface only exists while
-  // something shows, and the rule fills the gap below the windows.
+  // something shows. In use, the band rises from the gap below the windows
+  // over their bottom edge, as the side rails do over theirs.
   readonly property int surfaceHeight: 170
-  readonly property int ruleHeight: Math.max(8, Style.gapsOut * 2)
-  readonly property int ruleY: surfaceHeight - ruleHeight
+  readonly property int restHeight: Math.max(8, Style.gapsOut * 2)
+  readonly property int bandHeight: 28
+  function bandAt(open) { return restHeight + (bandHeight - restHeight) * open }
+  readonly property int cardBottom: surfaceHeight - bandHeight
 
   // ---------------------------------------------------------------- the OSD
 
@@ -122,23 +125,6 @@ Item {
 
   // ------------------------------------------------------------- the window
 
-  // Keeps the windows above the meter's zone. Empty and one pixel high: it
-  // only holds the reservation, always.
-  readonly property int reservedBottom: 18
-  PanelWindow {
-    screen: root.targetScreen
-    visible: root.targetScreen !== null
-    color: "transparent"
-    implicitHeight: 1
-    anchors { bottom: true; left: true; right: true }
-    WlrLayershell.namespace: "austraz-dayline-reserve"
-    WlrLayershell.layer: WlrLayer.Bottom
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    exclusionMode: ExclusionMode.Normal
-    exclusiveZone: root.reservedBottom
-    mask: Region {}
-  }
-
   PanelWindow {
     id: win
     screen: root.targetScreen
@@ -175,14 +161,15 @@ Item {
         }
       }
 
-      // The rule, opening from the middle.
+      // The rule, opening from the middle as the band rises.
       Item {
         id: ruleClip
+        readonly property real band: root.bandAt(root.opened)
         visible: root.osdUp && root.cur.hasProgress
         x: (stage.width - width) / 2
-        y: root.ruleY
+        y: stage.height - band
         width: stage.width * root.opened
-        height: root.ruleHeight
+        height: band
         clip: true
 
         Item {
@@ -191,29 +178,31 @@ Item {
           height: parent.height
 
           Rectangle { anchors.fill: parent; color: Color.background }
-          Rectangle { anchors.fill: parent; anchors.topMargin: 1; color: Qt.alpha(root.hud, 0.22) }
+          Rectangle { y: 2; width: parent.width; height: parent.height - 2; color: Qt.alpha(root.hud, 0.22) }
           // Up to 100 % in the theme's accent, red past it.
           Rectangle {
-            y: 1
-            height: parent.height - 1
+            y: 2
+            height: parent.height - 2
             width: parent.width * root.greenFill
             color: root.hud
           }
           Rectangle {
-            y: 1
+            y: 2
             x: parent.width * root.overFrom
-            height: parent.height - 1
+            height: parent.height - 2
             width: parent.width * Math.max(0, root.shownFill - root.overFrom)
             color: root.alarm
           }
+          // Stands in for the window's border it covers.
+          Rectangle { width: parent.width; height: 2; color: root.hud }
           Repeater {
             model: Model.ticks(root.cur.scale)
             delegate: Rectangle {
               required property var modelData
               x: Math.round(stage.width * modelData.fraction)
-              y: 1
+              y: 2
               width: modelData.notch ? 2 : 1
-              height: modelData.notch ? root.ruleHeight - 1 : modelData.major ? 6 : 3
+              height: modelData.notch ? ruleClip.band - 2 : modelData.major ? 12 : 6
               color: modelData.notch ? root.bright
                 : modelData.fraction <= root.shownFill ? root.hudBlack : root.dim
             }
@@ -245,7 +234,7 @@ Item {
           status: root.cur.status
           title: root.cur.title
           x: Model.cardX(root.cur.hasProgress ? root.shownLevel : 0.5, width, stage.width, 12)
-          y: root.ruleY - height - 10
+          y: root.cardBottom - height - 10
           Behavior on x { NumberAnimation { duration: root.dur(120); easing.type: Easing.OutCubic } }
         }
       }
