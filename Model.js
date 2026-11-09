@@ -1,7 +1,7 @@
 // Pure logic for the day line: what an on-screen message says and where it
 // goes. No QML here, so that it can be tested with node.
 
-var WAVE_STEPS = 8
+var WAVE_STEPS = 6
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
@@ -70,9 +70,12 @@ function waveStep(peak) {
   return clamp(Math.round(Math.sqrt(v) * WAVE_STEPS), 1, WAVE_STEPS)
 }
 
-// The history from the centre of the screen outwards, newest first.
-function pushWave(wave, peak, length) {
-  var next = [waveStep(peak)].concat(wave)
+// The history from the edge it started at, newest first. Each level takes
+// `repeat` columns, so that the meter crosses the screen in seconds.
+function pushWave(wave, peak, length, repeat) {
+  var step = waveStep(peak)
+  var next = wave.slice()
+  for (var i = 0; i < (repeat || 1); i++) next.unshift(step)
   next.length = Math.min(next.length, length)
   return next
 }

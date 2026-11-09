@@ -70,19 +70,24 @@ test("the card follows the level and stays on the screen", () => {
 
 test("waveStep has hard steps and never reaches zero", () => {
   assert.equal(Model.waveStep(0), 1)
-  assert.equal(Model.waveStep(1), 8)
+  assert.equal(Model.waveStep(1), 6)
   assert.equal(Model.waveStep(NaN), 1)
-  assert.equal(Model.waveStep(2), 8)
+  assert.equal(Model.waveStep(2), 6)
 })
 
 test("pushWave puts the newest first and keeps its length", () => {
-  assert.deepEqual(Model.pushWave([3, 4], 1, 2), [8, 3])
+  assert.deepEqual(Model.pushWave([3, 4], 1, 2), [6, 3])
   assert.deepEqual(Model.pushWave([], 0, 3), [1])
 })
 
+test("pushWave gives each level several columns", () => {
+  assert.deepEqual(Model.pushWave([3], 1, 4, 3), [6, 6, 6, 3])
+  assert.deepEqual(Model.pushWave([3], 1, 2, 3), [6, 6])
+})
+
 test("waveTop keeps columns on the grid, around the middle", () => {
-  assert.equal(Model.waveTop(8), 0)
-  assert.equal(Model.waveTop(2), 3)
-  assert.equal(Model.waveTop(3), 3)
-  assert.equal(Model.waveTop(1), 4)
+  assert.equal(Model.waveTop(6), 0)
+  assert.equal(Model.waveTop(2), 2)
+  assert.equal(Model.waveTop(3), 2)
+  assert.equal(Model.waveTop(1), 3)
 })

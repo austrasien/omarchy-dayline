@@ -84,8 +84,9 @@ Item {
   property real dictOpened: 0
   readonly property bool dictUp: dictating || dictOpened > 0
   property real peak: 0
+  property bool dictFromLeft: true
   onDictatingChanged: {
-    if (dictating) { dictClosing.stop(); dictOpening.restart() }
+    if (dictating) { dictFromLeft = Math.random() < 0.5; dictClosing.stop(); dictOpening.restart() }
     else { dictOpening.stop(); dictClosing.restart() }
   }
   NumberAnimation { id: dictOpening; target: root; property: "dictOpened"; to: 1; duration: root.dur(260); easing.type: Easing.OutCubic }
@@ -121,6 +122,23 @@ Item {
 
   // ------------------------------------------------------------- the window
 
+  // Keeps the windows above the meter's zone. Empty and one pixel high: it
+  // only holds the reservation, always.
+  readonly property int reservedBottom: 18
+  PanelWindow {
+    screen: root.targetScreen
+    visible: root.targetScreen !== null
+    color: "transparent"
+    implicitHeight: 1
+    anchors { bottom: true; left: true; right: true }
+    WlrLayershell.namespace: "austraz-dayline-reserve"
+    WlrLayershell.layer: WlrLayer.Bottom
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    exclusionMode: ExclusionMode.Normal
+    exclusiveZone: root.reservedBottom
+    mask: Region {}
+  }
+
   PanelWindow {
     id: win
     screen: root.targetScreen
@@ -153,6 +171,7 @@ Item {
           mode: root.dictMode
           peak: root.peak
           opened: root.dictOpened
+          fromLeft: root.dictFromLeft
         }
       }
 

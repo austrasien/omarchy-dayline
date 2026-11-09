@@ -11,11 +11,13 @@ Nothing shows at rest. It replaces the on-screen display:
 - **Screen and keyboard brightness**: 0 to 100 % in the accent.
 - A card above the level names it and gives its value. Messages without a level
   show the card alone.
-- **Dictation**: an 8-bit meter runs out from the middle of the screen while
-  recording, then turns into a bar with a light swung along it while transcribing.
+- **Dictation**: an 8-bit meter runs across the screen from one edge or the
+  other while recording, in the theme's accent, then turns into a bar with a light
+  swung along it while transcribing.
 
 It shows over everything, a fullscreen video included. Its surface takes no
-pointer and only exists while something shows.
+pointer and only exists while something shows. The windows are kept 18 pixels
+higher, for the meter's zone: Day bar and Day tape follow them.
 
 ## Wiring
 
