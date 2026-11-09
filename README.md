@@ -61,7 +61,8 @@ toasts show as usual.
 ## Settings
 
 `~/.config/omarchy/dayline.json`, optional: `verticalGap`, the gap below the
-windows, if a workspace rule makes it differ from `gaps_out`.
+windows, and `sideGap`, the gap beside them, if a workspace rule makes them differ
+from `gaps_out`.
 
 ## Commands
 

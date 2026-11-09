@@ -55,7 +55,8 @@ Item {
   readonly property int cardBottom: surfaceHeight - bandHeight
   // From the windows' left border to their right one: the band's top edge and
   // those borders then meet in two corners, without crossing.
-  readonly property int edgeInset: Style.gapsOut * 2
+  readonly property int edgeInset: isFinite(parseInt(rawConfig.sideGap, 10))
+    ? Math.max(0, parseInt(rawConfig.sideGap, 10)) : Style.gapsOut * 2
 
   // ---------------------------------------------------------------- the OSD
 
