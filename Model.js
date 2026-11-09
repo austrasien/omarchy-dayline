@@ -63,6 +63,17 @@ function cardX(fraction, cardWidth, screenWidth, margin) {
   return clamp(fraction * screenWidth - cardWidth / 2, margin, Math.max(margin, screenWidth - cardWidth - margin))
 }
 
+// Which way a change pushes the fill: 1 up, -1 down, 0 not at all. With
+// nothing to compare to, up; held against either end, towards that end.
+function surgeDirection(previous, percent, scale) {
+  if (previous === undefined || previous === null) return 1
+  if (percent > previous) return 1
+  if (percent < previous) return -1
+  if (percent >= scale) return 1
+  if (percent <= 0) return -1
+  return 0
+}
+
 // One step of the pixel meter's height, from a 0..1 peak. Hard steps on a
 // square-root scale, from Omakoe; silence is one step, never none.
 function waveStep(peak) {
@@ -92,6 +103,7 @@ if (typeof module !== "undefined") {
     readOsd: readOsd,
     ticks: ticks,
     cardX: cardX,
+    surgeDirection: surgeDirection,
     waveStep: waveStep,
     pushWave: pushWave,
     waveTop: waveTop

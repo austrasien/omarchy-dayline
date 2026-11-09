@@ -68,6 +68,15 @@ test("the card follows the level and stays on the screen", () => {
   assert.equal(Model.cardX(1, 200, 2000, 12), 1788)
 })
 
+test("the surge follows the change, and pushes against the ends", () => {
+  assert.equal(Model.surgeDirection(40, 45, 100), 1)
+  assert.equal(Model.surgeDirection(45, 40, 100), -1)
+  assert.equal(Model.surgeDirection(40, 40, 100), 0)
+  assert.equal(Model.surgeDirection(100, 100, 100), 1)
+  assert.equal(Model.surgeDirection(0, 0, 200), -1)
+  assert.equal(Model.surgeDirection(undefined, 30, 100), 1)
+})
+
 test("waveStep has hard steps and never reaches zero", () => {
   assert.equal(Model.waveStep(0), 1)
   assert.equal(Model.waveStep(1), 6)
