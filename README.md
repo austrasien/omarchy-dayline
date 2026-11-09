@@ -28,6 +28,14 @@ from the gap below the windows over their bottom edge, as the side rails do; the
 windows themselves never move. Its surface takes no pointer and only exists while
 something shows.
 
+## Install
+
+```sh
+omarchy plugin add https://github.com/austrasien/omarchy-dayline.git --enable
+```
+
+After editing the QML, run `omarchy-restart-shell`.
+
 ## Wiring
 
 It answers `omarchy-shell austraz.dayline osd '<json>'`, with the fields of
@@ -36,6 +44,19 @@ Omarchy's OSD model (`iconKey`, `hasProgress`, `value`, `maxValue`, `message`,
 so that a dictation HUD can stand aside. Dictation reads
 `$XDG_RUNTIME_DIR/voxtype/state`, `$XDG_RUNTIME_DIR/nemotron/levels.ndjson` and
 `$XDG_RUNTIME_DIR/nemotron/text`, the text so far.
+
+The on-screen display reaches it through
+[Volume Overdrive](https://github.com/austrasien/omarchy-volume-overdrive), which
+forwards to it. The live text comes from
+[nemotron-dictation](https://github.com/austrasien/nemotron-dictation).
+
+Notifications need a notification service that speaks its side of the ticker: on
+`omarchy-shell notifications ticker` it stops showing toasts and writes
+`$XDG_RUNTIME_DIR/austraz-notifications-ticker.json`, a list of
+`{ id, summary, body, icon, urgent, timestamp }`, and it answers
+`omarchy-shell notifications dismissId <id>` and `invoke <id>`. The stock Omarchy
+service does not do this: without such a service, the ticker stays empty and
+toasts show as usual.
 
 ## Commands
 
