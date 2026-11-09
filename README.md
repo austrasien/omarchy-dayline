@@ -58,6 +58,11 @@ Notifications need a notification service that speaks its side of the ticker: on
 service does not do this: without such a service, the ticker stays empty and
 toasts show as usual.
 
+## Settings
+
+`~/.config/omarchy/dayline.json`, optional: `verticalGap`, the gap below the
+windows, if a workspace rule makes it differ from `gaps_out`.
+
 ## Commands
 
 ```sh

@@ -36,7 +36,20 @@ Item {
   // something shows. In use, the band rises from the gap below the windows
   // over their bottom edge, as the side rails do over theirs.
   readonly property int surfaceHeight: 170
-  readonly property int restHeight: Math.max(8, Style.gapsOut * 2)
+  // The gap below the windows, unless a workspace rule changed it there:
+  // "verticalGap" in ~/.config/omarchy/dayline.json.
+  property var rawConfig: ({})
+  FileView {
+    path: Quickshell.env("HOME") + "/.config/omarchy/dayline.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.rawConfig = JSON.parse(text() || "{}") || ({}) } catch (e) {}
+    }
+  }
+  readonly property int restHeight: isFinite(parseInt(rawConfig.verticalGap, 10))
+    ? Math.max(0, parseInt(rawConfig.verticalGap, 10)) : Math.max(8, Style.gapsOut * 2)
   readonly property int bandHeight: 28
   function bandAt(open) { return restHeight + (bandHeight - restHeight) * open }
   readonly property int cardBottom: surfaceHeight - bandHeight
