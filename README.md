@@ -13,7 +13,8 @@ Nothing shows at rest. It replaces the on-screen display:
   show the card alone.
 - **Dictation**: an 8-bit meter runs across the screen from one edge or the
   other while recording, in the theme's accent, then turns into a bar with a light
-  swung along it while transcribing.
+  swung along it while transcribing. What has been said grows from the opposite
+  edge, over the meter; once it fills the band, it scrolls to the left.
 
 It shows over everything, a fullscreen video included. In use, the band rises
 from the gap below the windows over their bottom edge, as the side rails do; the
@@ -26,7 +27,8 @@ It answers `omarchy-shell austraz.dayline osd '<json>'`, with the fields of
 Omarchy's OSD model (`iconKey`, `hasProgress`, `value`, `maxValue`, `message`,
 `duration`), and `omarchy-shell austraz.dayline dictation`, which answers `ok`
 so that a dictation HUD can stand aside. Dictation reads
-`$XDG_RUNTIME_DIR/voxtype/state` and `$XDG_RUNTIME_DIR/nemotron/levels.ndjson`.
+`$XDG_RUNTIME_DIR/voxtype/state`, `$XDG_RUNTIME_DIR/nemotron/levels.ndjson` and
+`$XDG_RUNTIME_DIR/nemotron/text`, the text so far.
 
 ## Commands
 

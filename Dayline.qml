@@ -40,6 +40,9 @@ Item {
   readonly property int bandHeight: 28
   function bandAt(open) { return restHeight + (bandHeight - restHeight) * open }
   readonly property int cardBottom: surfaceHeight - bandHeight
+  // From the windows' left border to their right one: the band's top edge and
+  // those borders then meet in two corners, without crossing.
+  readonly property int edgeInset: Style.gapsOut * 2
 
   // ---------------------------------------------------------------- the OSD
 
@@ -88,8 +91,10 @@ Item {
   readonly property bool dictUp: dictating || dictOpened > 0
   property real peak: 0
   property bool dictFromLeft: true
+  property string dictText: ""
+  property string demoText: ""
   onDictatingChanged: {
-    if (dictating) { dictFromLeft = Math.random() < 0.5; dictClosing.stop(); dictOpening.restart() }
+    if (dictating) { dictFromLeft = Math.random() < 0.5; dictText = ""; dictClosing.stop(); dictOpening.restart() }
     else { dictOpening.stop(); dictClosing.restart() }
   }
   NumberAnimation { id: dictOpening; target: root; property: "dictOpened"; to: 1; duration: root.dur(260); easing.type: Easing.OutCubic }
@@ -106,6 +111,21 @@ Item {
     onLoaded: root.dictState = text().trim()
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: stateFile.reload() }
+
+  // What has been said so far, written by the dictation client. Polled, and
+  // only during a dictation: the file comes and goes with each one.
+  FileView {
+    id: textFile
+    path: root.runtimeDir + "/nemotron/text"
+    printErrors: false
+    onLoaded: root.dictText = text()
+  }
+  Timer {
+    interval: 120
+    running: root.dictating && root.demoState === ""
+    repeat: true
+    onTriggered: textFile.reload()
+  }
 
   Process {
     running: root.demoState === "" && root.dictMode === "recording"
@@ -149,10 +169,13 @@ Item {
       Loader {
         active: root.dictUp
         visible: !root.osdUp
-        anchors.fill: parent
+        x: root.edgeInset
+        width: root.bandWidth
+        height: parent.height
         sourceComponent: DictationMeter {
           bar: root
-          stageWidth: stage.width
+          stageWidth: root.bandWidth
+          text: root.demoState !== "" ? root.demoText : root.dictText
           stageHeight: stage.height
           mode: root.dictMode
           peak: root.peak
@@ -166,15 +189,15 @@ Item {
         id: ruleClip
         readonly property real band: root.bandAt(root.opened)
         visible: root.osdUp && root.cur.hasProgress
-        x: (stage.width - width) / 2
+        x: root.edgeInset + (root.bandWidth - width) / 2
         y: stage.height - band
-        width: stage.width * root.opened
+        width: root.bandWidth * root.opened
         height: band
         clip: true
 
         Item {
-          x: -ruleClip.x
-          width: stage.width
+          x: root.edgeInset - ruleClip.x
+          width: root.bandWidth
           height: parent.height
 
           Rectangle { anchors.fill: parent; color: Color.background }
@@ -199,7 +222,7 @@ Item {
             model: Model.ticks(root.cur.scale)
             delegate: Rectangle {
               required property var modelData
-              x: Math.round(stage.width * modelData.fraction)
+              x: Math.round(root.bandWidth * modelData.fraction)
               y: 2
               width: modelData.notch ? 2 : 1
               height: modelData.notch ? ruleClip.band - 2 : modelData.major ? 12 : 6
@@ -209,7 +232,7 @@ Item {
           }
           // The level itself.
           Rectangle {
-            x: Math.round(stage.width * root.shownLevel) - 1
+            x: Math.round(root.bandWidth * root.shownLevel) - 1
             width: 3
             height: parent.height
             color: root.bright
@@ -233,13 +256,15 @@ Item {
           head: root.cur.label
           status: root.cur.status
           title: root.cur.title
-          x: Model.cardX(root.cur.hasProgress ? root.shownLevel : 0.5, width, stage.width, 12)
+          x: root.edgeInset + Model.cardX(root.cur.hasProgress ? root.shownLevel : 0.5, width, root.bandWidth, 2)
           y: root.cardBottom - height - 10
           Behavior on x { NumberAnimation { duration: root.dur(120); easing.type: Easing.OutCubic } }
         }
       }
     }
   }
+
+  readonly property real bandWidth: stage.width - 2 * edgeInset
 
   // The level and the fill move smoothly between two presses of a key, but
   // start in place.
@@ -256,6 +281,7 @@ Item {
     function closeOsd(): string { root.closeOsd(); return "ok" }
     function dictation(): string { return "ok" }
     function demo(mode: string): void { root.demoState = mode === "off" ? "" : mode }
+    function demoSay(text: string): void { root.demoText = text }
     function snapshot(path: string): void { stage.grabToImage(function(r) { r.saveToFile(path) }) }
   }
 }

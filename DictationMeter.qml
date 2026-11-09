@@ -4,7 +4,9 @@ import "Model.js" as Model
 
 // Omakoe's 8-bit meter, as wide as the screen: hard-stepped mirrored columns
 // of cells that run across from one edge or the other. Transcribing, they
-// become a two-row bar with a light swung along it.
+// become a two-row bar with a light swung along it. What has been said grows
+// from the opposite edge, over the meter, and once it fills the band it
+// scrolls to the left, its end staying in view.
 Item {
   id: meter
   required property var bar
@@ -14,6 +16,7 @@ Item {
   property real peak: 0
   property real opened: 0
   property bool fromLeft: true
+  property string text: ""
 
   readonly property int pitch: 4
   readonly property int columns: Math.ceil(stageWidth / pitch)
@@ -22,6 +25,13 @@ Item {
   readonly property real band: bar.bandAt(opened)
 
   property var wave: []
+  property bool cursorOn: true
+  Timer {
+    interval: 450
+    running: meter.text !== ""
+    repeat: true
+    onTriggered: meter.cursorOn = !meter.cursorOn
+  }
   Timer {
     interval: 50
     running: meter.recording
@@ -124,6 +134,60 @@ Item {
           }
         }
       }
+      }
+
+      Item {
+        id: said
+        readonly property int pad: 10
+        readonly property real textWidth: saidText.implicitWidth
+        visible: meter.text !== ""
+        x: meter.fromLeft ? meter.stageWidth - width : 0
+        y: 2
+        width: Math.min(meter.stageWidth, textWidth + 2 * pad)
+        height: parent.height - 2
+        clip: true
+
+        Rectangle { anchors.fill: parent; color: meter.bar.hudBlack }
+        Image {
+          anchors.fill: parent
+          fillMode: Image.Tile
+          verticalAlignment: Image.AlignTop
+          horizontalAlignment: Image.AlignLeft
+          source: "data:image/svg+xml," + encodeURIComponent(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='1' fill='"
+            + meter.bar.hud + "' fill-opacity='0.07'/></svg>")
+        }
+        Text {
+          id: saidText
+          x: Math.min(said.pad, said.width - said.textWidth - said.pad)
+          anchors.verticalCenter: parent.verticalCenter
+          // Enough to fill the screen, however long the dictation.
+          text: meter.text.slice(-400) + (meter.cursorOn ? " █" : "  ")
+          textFormat: Text.PlainText
+          color: meter.bar.hud
+          font.family: Style.fontFamily
+          font.pixelSize: 15
+          font.bold: true
+          font.capitalization: Font.AllUppercase
+        }
+        // Worn tape: dark lines across everything, text included.
+        Image {
+          anchors.fill: parent
+          fillMode: Image.Tile
+          verticalAlignment: Image.AlignTop
+          horizontalAlignment: Image.AlignLeft
+          source: "data:image/svg+xml," + encodeURIComponent(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'><rect width='3' height='1' fill='"
+            + meter.bar.hudBlack + "' fill-opacity='0.6'/></svg>")
+        }
+        // Its front, where it meets the meter.
+        Rectangle {
+          visible: said.width < meter.stageWidth
+          x: meter.fromLeft ? 0 : parent.width - width
+          width: 2
+          height: parent.height
+          color: meter.bar.hud
+        }
       }
     }
   }
