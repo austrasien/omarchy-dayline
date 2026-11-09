@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "austraz.dayline",
   "name": "Day line",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "austrasien",
   "license": "MIT",
   "description": "HUD-style rule along the bottom edge of the screen: volume, brightness, keyboard backlight and dictation",
