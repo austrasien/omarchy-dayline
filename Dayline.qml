@@ -1,0 +1,253 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Hyprland
+import qs.Commons
+import "Model.js" as Model
+
+// A rule along the bottom edge of the screen, the third side of the frame
+// the day tape and the day bar draw. Nothing shows at rest. A change of
+// volume or brightness opens it from the middle, with a card above the
+// level; dictation runs its pixel meter along it for as long as it lasts.
+Item {
+  id: root
+
+  property QtObject shell: null
+  property var manifest: null
+
+  readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR")
+
+  readonly property color hud: Color.accent
+  readonly property color alarm: "#FF3030"
+  readonly property color bright: Qt.tint(hud, Qt.alpha("#ffffff", 0.45))
+  readonly property color dim: Qt.tint(Color.background, Qt.alpha(hud, 0.45))
+  readonly property color hudBlack: Qt.darker(Color.background, 1.6)
+  function dur(ms) { return Style.reduceMotion ? 0 : ms }
+
+  readonly property var targetScreen: {
+    var screens = Quickshell.screens
+    var want = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+    for (var i = 0; i < screens.length; i++) if (screens[i].name === want) return screens[i]
+    return screens.length ? screens[0] : null
+  }
+
+  // Fixed: Hyprland animates a layer's resize. The surface only exists while
+  // something shows, and the rule fills the gap below the windows.
+  readonly property int surfaceHeight: 170
+  readonly property int ruleHeight: Math.max(8, Style.gapsOut * 2)
+  readonly property int ruleY: surfaceHeight - ruleHeight
+
+  // ---------------------------------------------------------------- the OSD
+
+  property var cur: Model.readOsd({})
+  property bool wanted: false      // the message is on: the card stays open
+  property bool osdUp: false       // something of it is still on screen
+  property real opened: 0          // how far the rule has opened, 0 to 1
+
+  function showOsd(json) {
+    var o
+    try { o = JSON.parse(json || "{}") } catch (e) { return "bad" }
+    cur = Model.readOsd(o)
+    wanted = true
+    osdUp = true
+    closingRule.stop()
+    openingRule.restart()
+    if (cur.duration > 0) { hideTimer.interval = cur.duration; hideTimer.restart() }
+    else hideTimer.stop()
+    return "ok"
+  }
+  function closeOsd() {
+    hideTimer.stop()
+    wanted = false
+  }
+  Timer { id: hideTimer; onTriggered: root.wanted = false }
+
+  NumberAnimation { id: openingRule; target: root; property: "opened"; to: 1; duration: root.dur(240); easing.type: Easing.OutCubic }
+  NumberAnimation {
+    id: closingRule
+    target: root
+    property: "opened"
+    to: 0
+    duration: root.dur(220)
+    easing.type: Easing.OutCubic
+    onFinished: root.osdUp = false
+  }
+
+  // ----------------------------------------------------------- the dictation
+
+  property string dictState: "idle"
+  property string demoState: ""
+  readonly property string dictMode: demoState !== "" ? demoState
+    : dictState === "recording" || dictState === "transcribing" ? dictState : "idle"
+  readonly property bool dictating: dictMode !== "idle"
+  property real dictOpened: 0
+  readonly property bool dictUp: dictating || dictOpened > 0
+  property real peak: 0
+  onDictatingChanged: {
+    if (dictating) { dictClosing.stop(); dictOpening.restart() }
+    else { dictOpening.stop(); dictClosing.restart() }
+  }
+  NumberAnimation { id: dictOpening; target: root; property: "dictOpened"; to: 1; duration: root.dur(260); easing.type: Easing.OutCubic }
+  NumberAnimation { id: dictClosing; target: root; property: "dictOpened"; to: 0; duration: root.dur(200); easing.type: Easing.InCubic }
+
+  // Written on every change, once it exists: it may not, until the first
+  // dictation since boot.
+  FileView {
+    id: stateFile
+    path: root.runtimeDir + "/voxtype/state"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.dictState = text().trim()
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: stateFile.reload() }
+
+  Process {
+    running: root.demoState === "" && root.dictMode === "recording"
+    command: ["tail", "-n0", "-F", root.runtimeDir + "/nemotron/levels.ndjson"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        try { root.peak = Number(JSON.parse(line).peak) || 0 } catch (e) {}
+      }
+    }
+  }
+  Timer {
+    interval: 80
+    running: root.demoState === "recording"
+    repeat: true
+    onTriggered: root.peak = Math.random() * Math.random()
+  }
+
+  // ------------------------------------------------------------- the window
+
+  PanelWindow {
+    id: win
+    screen: root.targetScreen
+    visible: root.targetScreen !== null && (root.osdUp || root.dictUp)
+    color: "transparent"
+    implicitHeight: root.surfaceHeight
+    anchors { bottom: true; left: true; right: true }
+    WlrLayershell.namespace: "austraz-dayline"
+    // Over everything, a fullscreen video included: that is where the volume
+    // changes most, and it only lasts a moment.
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    exclusionMode: ExclusionMode.Ignore
+    exclusiveZone: 0
+    mask: Region {}
+
+    Item {
+      id: stage
+      anchors.fill: parent
+
+      // The pixel meter, or the bar it turns into while transcribing.
+      Loader {
+        active: root.dictUp
+        visible: !root.osdUp
+        anchors.fill: parent
+        sourceComponent: DictationMeter {
+          bar: root
+          stageWidth: stage.width
+          stageHeight: stage.height
+          mode: root.dictMode
+          peak: root.peak
+          opened: root.dictOpened
+        }
+      }
+
+      // The rule, opening from the middle.
+      Item {
+        id: ruleClip
+        visible: root.osdUp && root.cur.hasProgress
+        x: (stage.width - width) / 2
+        y: root.ruleY
+        width: stage.width * root.opened
+        height: root.ruleHeight
+        clip: true
+
+        Item {
+          x: -ruleClip.x
+          width: stage.width
+          height: parent.height
+
+          Rectangle { anchors.fill: parent; color: Color.background }
+          Rectangle { anchors.fill: parent; anchors.topMargin: 1; color: Qt.alpha(root.hud, 0.22) }
+          // Up to 100 % in the theme's accent, red past it.
+          Rectangle {
+            y: 1
+            height: parent.height - 1
+            width: parent.width * root.greenFill
+            color: root.hud
+          }
+          Rectangle {
+            y: 1
+            x: parent.width * root.overFrom
+            height: parent.height - 1
+            width: parent.width * Math.max(0, root.shownFill - root.overFrom)
+            color: root.alarm
+          }
+          Repeater {
+            model: Model.ticks(root.cur.scale)
+            delegate: Rectangle {
+              required property var modelData
+              x: Math.round(stage.width * modelData.fraction)
+              y: 1
+              width: modelData.notch ? 2 : 1
+              height: modelData.notch ? root.ruleHeight - 1 : modelData.major ? 6 : 3
+              color: modelData.notch ? root.bright
+                : modelData.fraction <= root.shownFill ? root.hudBlack : root.dim
+            }
+          }
+          // The level itself.
+          Rectangle {
+            x: Math.round(stage.width * root.shownLevel) - 1
+            width: 3
+            height: parent.height
+            color: root.bright
+          }
+        }
+      }
+
+      Loader {
+        active: root.osdUp
+        sourceComponent: HudCard {
+          bar: root
+          width: root.cur.hasProgress ? 220 : Math.min(420, Math.max(220, 60 + root.cur.title.length * 10))
+          shown: root.wanted
+          onClosed: {
+            if (root.wanted) return
+            openingRule.stop()
+            closingRule.restart()
+          }
+          ink: root.cur.muted || root.cur.overdrive ? root.alarm : root.hud
+          statusInk: root.alarm
+          head: root.cur.label
+          status: root.cur.status
+          title: root.cur.title
+          x: Model.cardX(root.cur.hasProgress ? root.shownLevel : 0.5, width, stage.width, 12)
+          y: root.ruleY - height - 10
+          Behavior on x { NumberAnimation { duration: root.dur(120); easing.type: Easing.OutCubic } }
+        }
+      }
+    }
+  }
+
+  // The level and the fill move smoothly between two presses of a key, but
+  // start in place.
+  property real shownLevel: cur.fraction
+  property real shownFill: cur.fill
+  Behavior on shownLevel { enabled: root.opened > 0; NumberAnimation { duration: root.dur(120); easing.type: Easing.OutCubic } }
+  Behavior on shownFill { enabled: root.opened > 0; NumberAnimation { duration: root.dur(120); easing.type: Easing.OutCubic } }
+  readonly property real overFrom: cur.volume ? 0.5 : 1
+  readonly property real greenFill: Math.min(shownFill, overFrom)
+
+  IpcHandler {
+    target: "austraz.dayline"
+    function osd(payload: string): string { return root.showOsd(payload) }
+    function closeOsd(): string { root.closeOsd(); return "ok" }
+    function dictation(): string { return "ok" }
+    function demo(mode: string): void { root.demoState = mode === "off" ? "" : mode }
+    function snapshot(path: string): void { stage.grabToImage(function(r) { r.saveToFile(path) }) }
+  }
+}
