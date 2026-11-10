@@ -70,9 +70,12 @@ Item {
     try { o = JSON.parse(json || "{}") } catch (e) { return "bad" }
     var next = Model.readOsd(o)
     if (next.hasProgress && !next.muted) {
-      var direction = Model.surgeDirection(lastPercent[next.label], next.percent, next.scale)
-      if (direction !== 0) startSurge(direction)
+      var direction = Model.trendDirection(lastPercent[next.label], next.percent, next.scale)
+      // An unchanged value says nothing new: the same level keeps its arrows.
+      trend = direction !== 0 ? direction : next.label === cur.label ? trend : 0
       lastPercent[next.label] = next.percent
+    } else {
+      trend = 0
     }
     cur = next
     wanted = true
@@ -83,24 +86,24 @@ Item {
     else hideTimer.stop()
     return "ok"
   }
-  // A change sends a wave along the fill: it gathers speed, slams into its
-  // end, right going up and left going down, and the impact flashes.
+  // Which way the level last went, 1 up, -1 down: chevrons run the whole
+  // rule that way and blink, over the fill and past it, so that they show at
+  // any level. Free-running: held keys repeat faster than a blink lasts.
   property var lastPercent: ({})
-  property real surge: 0
-  property int surgeDir: 1
-  property real impact: 0
-  function startSurge(direction) {
-    // Keys held down repeat faster than the wave travels: let it arrive.
-    if (surgeRun.running && surgeDir === direction) return
-    surgeDir = direction
-    surgeRun.restart()
-  }
-  SequentialAnimation {
-    id: surgeRun
-    PropertyAction { target: root; property: "surge"; value: 0 }
-    NumberAnimation { target: root; property: "surge"; to: 1.5; duration: root.dur(340); easing.type: Easing.InCubic }
-    PropertyAction { target: root; property: "impact"; value: 1 }
-    NumberAnimation { target: root; property: "impact"; to: 0; duration: root.dur(260); easing.type: Easing.OutCubic }
+  property int trend: 0
+  property real trendPhase: 0
+  readonly property int trendTile: 30
+  readonly property color trendInk: trend < 0 ? "#FFB000" : bright
+  readonly property string trendChevron: trend === 0 ? ""
+    : Model.chevronSvg(trend, trendInk, hudBlack, trendTile, 26)
+  NumberAnimation {
+    target: root
+    property: "trendPhase"
+    from: 0
+    to: 12
+    duration: 1440
+    loops: Animation.Infinite
+    running: root.osdUp && root.trend !== 0 && !Style.reduceMotion
   }
 
   function closeOsd() {
@@ -372,49 +375,6 @@ Item {
             width: parent.width * Math.max(0, root.shownFill - root.overFrom)
             color: root.alarm
           }
-          // The wave, inside the fill, three pulses deep.
-          Item {
-            id: surgeZone
-            readonly property real length: root.bandWidth * root.shownFill
-            y: 2
-            width: length
-            height: parent.height - 2
-            clip: true
-
-            Repeater {
-              model: 3
-              delegate: Rectangle {
-                required property int index
-                readonly property real at: Math.min(1, root.surge - index * 0.17)
-                readonly property real head: root.surgeDir > 0 ? surgeZone.length * at : surgeZone.length * (1 - at)
-                visible: surgeRun.running && root.impact === 0 && at > 0
-                x: root.surgeDir > 0 ? head - width : head
-                width: 340
-                height: surgeZone.height
-                opacity: 1 - index * 0.3
-                gradient: Gradient {
-                  orientation: Gradient.Horizontal
-                  GradientStop { position: 0; color: root.surgeDir > 0 ? "transparent" : "#ffffff" }
-                  GradientStop { position: root.surgeDir > 0 ? 0.8 : 0.2; color: Qt.alpha(root.bright, 0.85) }
-                  GradientStop { position: 1; color: root.surgeDir > 0 ? "#ffffff" : "transparent" }
-                }
-              }
-            }
-
-            // The impact, against the end it hit.
-            Rectangle {
-              visible: root.impact > 0
-              x: root.surgeDir > 0 ? surgeZone.length - width : 0
-              width: 120 + 180 * (1 - root.impact)
-              height: surgeZone.height
-              opacity: root.impact
-              gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: root.surgeDir > 0 ? "transparent" : "#ffffff" }
-                GradientStop { position: 1; color: root.surgeDir > 0 ? "#ffffff" : "transparent" }
-              }
-            }
-          }
           // Stands in for the window's border it covers.
           Rectangle { width: parent.width; height: 2; color: root.hud }
           Repeater {
@@ -431,8 +391,9 @@ Item {
           }
           // The level itself.
           Rectangle {
-            x: Math.round(root.bandWidth * root.shownLevel) - 1 - (root.surgeDir > 0 ? 8 * root.impact : 0)
-            width: 3 + (root.surgeDir > 0 ? 8 * root.impact : 0)
+            x: Math.round(root.bandWidth * root.shownLevel) - 1
+            z: 1
+            width: 3
             height: parent.height
             color: root.bright
           }
@@ -447,6 +408,20 @@ Item {
             source: "data:image/svg+xml," + encodeURIComponent(
               "<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'><rect width='3' height='1' fill='"
               + root.hudBlack + "' fill-opacity='0.6'/></svg>")
+          }
+          // Up to the right, down to the left, one tile past either end.
+          Image {
+            readonly property real shift: (root.trendPhase % 1) * root.trendTile
+            visible: root.trend !== 0
+            x: root.trend > 0 ? shift - root.trendTile : -shift
+            y: 2
+            width: parent.width + root.trendTile
+            height: parent.height - 2
+            opacity: Math.floor(root.trendPhase / 2) % 2 ? 0.35 : 1
+            fillMode: Image.Tile
+            verticalAlignment: Image.AlignTop
+            horizontalAlignment: Image.AlignLeft
+            source: root.trendChevron
           }
         }
       }
@@ -463,9 +438,10 @@ Item {
             closingRule.restart()
           }
           ink: root.cur.muted || root.cur.overdrive ? root.alarm : root.hud
-          statusInk: root.alarm
+          statusInk: root.cur.status !== "" ? root.alarm : root.trendInk
           head: root.cur.label
-          status: root.cur.status
+          status: Model.trendStatus(root.cur.status, root.trend)
+          trend: root.trend
           title: root.cur.title
           x: root.edgeInset + Model.cardX(root.cur.hasProgress ? root.shownLevel : 0.5, width, root.bandWidth, 2)
           y: root.cardBottom - height - 10

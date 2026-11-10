@@ -9,8 +9,9 @@ Nothing shows at rest. It replaces the on-screen display:
 - **Volume**: 0 to 200 % across the screen, 100 % in the middle, in the theme's
   accent up to 100 % and red beyond.
 - **Screen and keyboard brightness**: 0 to 100 % in the accent.
-- Each change sends a wave along the fill, which gathers speed and slams into
-  the end it is heading for: the level going up, the left end going down.
+- Each change shows which way the level goes: blinking chevrons run the whole
+  rule, white to the right going up, amber to the left going down, and the card
+  says UP or DOWN with chevrons of its own.
 - A card above the level names it and gives its value. Messages without a level
   show the card alone.
 - **Dictation**: an 8-bit meter runs across the screen from one edge or the

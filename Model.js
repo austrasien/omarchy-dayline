@@ -63,15 +63,35 @@ function cardX(fraction, cardWidth, screenWidth, margin) {
   return clamp(fraction * screenWidth - cardWidth / 2, margin, Math.max(margin, screenWidth - cardWidth - margin))
 }
 
-// Which way a change pushes the fill: 1 up, -1 down, 0 not at all. With
-// nothing to compare to, up; held against either end, towards that end.
-function surgeDirection(previous, percent, scale) {
-  if (previous === undefined || previous === null) return 1
+// Which way a change moves the level: 1 up, -1 down, 0 not at all. Held
+// against an end, towards that end. With nothing to compare to, none: the
+// arrows must not guess, on the first change after the shell starts.
+function trendDirection(previous, percent, scale) {
+  if (previous === undefined || previous === null) return 0
   if (percent > previous) return 1
   if (percent < previous) return -1
   if (percent >= scale) return 1
   if (percent <= 0) return -1
   return 0
+}
+
+// The card's status: what is wrong first, otherwise where the level is going.
+function trendStatus(status, trend) {
+  if (status) return status
+  return trend > 0 ? "\u25B2 UP" : trend < 0 ? "\u25BC DOWN" : ""
+}
+
+// One chevron tile, pointing right for 1 and left for -1, dark-edged so that
+// it reads over the fill as well as over the bare track.
+function chevronSvg(direction, ink, edge, width, height) {
+  var cx = width / 2, cy = height / 2, tip = direction > 0 ? 4 : -4
+  var points = (cx - tip) + "," + (cy - 8) + " " + (cx + tip) + "," + cy + " " + (cx - tip) + "," + (cy + 8)
+  var line = function(color, thick) {
+    return "<polyline points='" + points + "' fill='none' stroke='" + color + "' stroke-width='" + thick + "'/>"
+  }
+  return "data:image/svg+xml," + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='" + width + "' height='" + height + "'>"
+    + line(edge, 8) + line(ink, 4) + "</svg>")
 }
 
 // What the ticker runs: the persistent ones, red, going round until they are
@@ -127,7 +147,9 @@ if (typeof module !== "undefined") {
     cardX: cardX,
     tickerPlan: tickerPlan,
     newsText: newsText,
-    surgeDirection: surgeDirection,
+    trendDirection: trendDirection,
+    trendStatus: trendStatus,
+    chevronSvg: chevronSvg,
     waveStep: waveStep,
     pushWave: pushWave,
     waveTop: waveTop

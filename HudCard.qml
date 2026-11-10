@@ -17,6 +17,7 @@ Item {
   property string title: ""
   property var rows: []
   property bool reticle: true
+  property int trend: 0
   default property alias content: hudExtra.data
   property real t: 1
   property real spin: 0
@@ -179,7 +180,7 @@ Item {
 
         // The reticle spins down onto the target and stops at the lock.
         Item {
-          visible: hudCard.reticle
+          visible: hudCard.reticle && hudCard.trend === 0
           x: hudCard.width - 14 - width
           y: 40
           width: 34
@@ -207,6 +208,30 @@ Item {
             rotation: 45 - hudCard.spin * hudCard.spinFrom * 0.75
           }
           Rectangle { anchors.centerIn: parent; width: 3; height: 3; color: bar.bright }
+        }
+      }
+
+      // In the reticle's place while a level moves: three chevrons, lit one
+      // after the other the way it is going.
+      Item {
+        visible: hudCard.reticle && hudCard.trend !== 0
+        x: hudCard.width - 14 - width
+        y: 40
+        width: 34
+        height: 34
+        Repeater {
+          model: 3
+          delegate: Image {
+            required property int index
+            readonly property int lit: Math.floor(bar.trendPhase) % 3
+            x: 2
+            y: 6 + index * 11 - 13
+            width: bar.trendTile
+            height: 26
+            rotation: -90
+            source: bar.trendChevron
+            opacity: index === (hudCard.trend > 0 ? 2 - lit : lit) ? 1 : 0.3
+          }
         }
       }
 
