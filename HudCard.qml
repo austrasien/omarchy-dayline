@@ -224,13 +224,12 @@ Item {
           delegate: Image {
             required property int index
             readonly property int lit: Math.floor(bar.trendPhase) % 3
-            x: 2
-            y: 6 + index * 11 - 13
+            x: 6 + index * 11 - width / 2
+            y: 4
             width: bar.trendTile
             height: 26
-            rotation: -90
             source: bar.trendChevron
-            opacity: index === (hudCard.trend > 0 ? 2 - lit : lit) ? 1 : 0.3
+            opacity: index === (hudCard.trend > 0 ? lit : 2 - lit) ? 1 : 0.3
           }
         }
       }

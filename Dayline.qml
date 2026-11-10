@@ -86,9 +86,8 @@ Item {
     else hideTimer.stop()
     return "ok"
   }
-  // Which way the level last went, 1 up, -1 down: chevrons run the whole
-  // rule that way and blink, over the fill and past it, so that they show at
-  // any level. Free-running: held keys repeat faster than a blink lasts.
+  // Which way the level last went, 1 up, -1 down, for the card's chevrons.
+  // Free-running: held keys repeat faster than a cycle lasts.
   property var lastPercent: ({})
   property int trend: 0
   property real trendPhase: 0
@@ -392,7 +391,6 @@ Item {
           // The level itself.
           Rectangle {
             x: Math.round(root.bandWidth * root.shownLevel) - 1
-            z: 1
             width: 3
             height: parent.height
             color: root.bright
@@ -408,20 +406,6 @@ Item {
             source: "data:image/svg+xml," + encodeURIComponent(
               "<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'><rect width='3' height='1' fill='"
               + root.hudBlack + "' fill-opacity='0.6'/></svg>")
-          }
-          // Up to the right, down to the left, one tile past either end.
-          Image {
-            readonly property real shift: (root.trendPhase % 1) * root.trendTile
-            visible: root.trend !== 0
-            x: root.trend > 0 ? shift - root.trendTile : -shift
-            y: 2
-            width: parent.width + root.trendTile
-            height: parent.height - 2
-            opacity: Math.floor(root.trendPhase / 2) % 2 ? 0.35 : 1
-            fillMode: Image.Tile
-            verticalAlignment: Image.AlignTop
-            horizontalAlignment: Image.AlignLeft
-            source: root.trendChevron
           }
         }
       }
